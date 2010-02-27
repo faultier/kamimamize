@@ -1,23 +1,20 @@
 # coding: utf-8
 
-require 'kamimamize/converter/base'
+require 'kamimamize/plugin/base'
 require 'open-uri'
 require 'rexml/document'
 
 module Kamimamize
-  module Converter
+  module Plugin
     class Swap < Base
       CONV_URL = 'http://jlp.yahooapis.jp/JIMService/V1/conversion'
 
-      def self._k?(name, reading)
-        rand() > 0.2 ? true : false
+      def initialize(conf)
+        super
+        @appid = conf[:appid]
       end
 
-      def initialize(opts)
-        @appid = opts[:appid]
-      end
-
-      def kamimamize(name, reading)
+      def convert(name, reading)
         doc = REXML::Document.new(open("#{CONV_URL}?appid=#{@appid}&sentence=#{URI.escape(reading)}&format=roman&response=half_alphanumeric&dictionary=normal"))
         romans   = doc.get_elements('//HalfAlphanumeric').map{|e|
           _r = e.text
