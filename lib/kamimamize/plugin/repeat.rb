@@ -14,7 +14,7 @@ module Kamimamize
                 c = name[(1..name.length-2).detect{|i|name[i]==name[i-1]}]
                 name.sub(/#{c}/, c*count)
               end
-        !!res ? "#{res}さん" : @next.kamimamize(name, reading)
+        !!res ? "#{res}さん" : nil
       end
     end
   end
