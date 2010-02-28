@@ -14,51 +14,56 @@ module Kamimamize
         @appid = conf[:appid]
       end
 
-      def convert(name, reading)
-        doc = REXML::Document.new(open("#{CONV_URL}?appid=#{@appid}&sentence=#{URI.escape(reading)}&format=roman&response=half_alphanumeric&dictionary=normal"))
-        romans   = doc.get_elements('//HalfAlphanumeric').map{|e|
-          _r = e.text
+      def kana_to_romans(kana)
+        url = "#{CONV_URL}?appid=#{@appid}&sentence=#{URI.escape(kana)}&format=roman&response=half_alphanumeric&dictionary=normal"
+        doc = nil
+        open(url) {|res| doc = REXML::Document.new(res)}
+        doc.get_elements('//HalfAlphanumeric').map {|elem|
+          _r = elem.text
           _r.gsub!('nn','n')
           _r.gsub!('ch','t')
           _r.gsub!('sh','s')
           _r
         }
-        r        = romans.join('').dup
-        yomigana = ""
-        kanji    = ""
-        i        = 0
-        while yomigana == kanji && i < 5 do
-          r = romans.map {|roman|
-            cond = rand()
-            _r = roman.dup
-            case
-            when cond > 0.6
-              _c = _r.split('').sort_by{rand}.detect{|c|c =~ /[^aiueon]/}
-              _s = %w(k g s z t n h p b m y r w).select{|x|x != _c}.sort_by{rand}.first
-              _r.gsub!(/#{_c}/,_s)
-            when cond > 0.3
-              _c = _r.split('').sort_by{rand}.detect{|c|c =~ /[aiueo]/}
-              _s = %w(a i u e o).select{|x|x != _c}.sort_by{rand}.first
-              _r.gsub!(/#{_c}/,_s)
-            end
-            _r
-          }.join('')
-          next if romans.join('') == r
-          res = REXML::Document.new(open("#{CONV_URL}?appid=#{@appid}&sentence=#{r}&format=roman&mode=roman")).elements['//SegmentText']
-          yomigana = res.text if !!res && !!res.text
-          if yomigana == reading
-            yomigana = ""
-            next
+      end
+
+      def roman_to_kana(roman)
+        url = "#{CONV_URL}?appid=#{@appid}&sentence=#{roman}&format=roman&mode=roman"
+        doc = nil
+        open(url) {|res| doc = REXML::Document.new(res)}
+        doc.elements['//SegmentText'].text
+      end
+
+      def kana_to_kanji(kana)
+        res = ""
+        url = "#{CONV_URL}?appid=#{@appid}&sentence=#{URI.escape(kana)}&dictionary=default,name"
+        doc = nil
+        open(url) {|res| doc = REXML::Document.new(res)}
+        doc.each_element('//Segment') {|elem|
+          c = elem.get_elements('CandidateList/Candidate')
+          res << c[0,3].sort_by{rand}.first.text
+        }
+        res
+      end
+
+      def convert(name, reading)
+        roman = kana_to_romans(reading).map {|r|
+          cond = rand()
+          _r   = r.dup
+          if cond > 0.6
+            _c = _r.split('').sort_by{rand}.detect{|c|c =~ /[^aiueon]/}
+            _s = %w(k g s z t n h p b m r ry).select{|x|x != _c}.sort_by{rand}.first
+            _r.gsub!(/#{_c}/,_s)
+          elsif cond > 0.3
+            _c = _r.split('').sort_by{rand}.detect{|c|c =~ /[aiueo]/}
+            _s = %w(a i u e o).select{|x|x != _c}.sort_by{rand}.first
+            _r.gsub!(/#{_c}/,_s)
           end
-          kanji = ""
-          body = open("#{CONV_URL}?appid=#{@appid}&sentence=#{URI.escape(yomigana)}&dictionary=default,name")
-          res = REXML::Document.new(body).each_element('//Segment') {|elem|
-            c = elem.get_elements('CandidateList/Candidate')
-            kanji << c[0, 10].sort_by{rand}.first.text
-          }
-          i += 1
-        end
-        !!kanji ? "#{kanji}(#{yomigana})さん" : "#{yomigana}さん"
+          _r
+        }.join('')
+        kana  = roman_to_kana(roman)
+        kanji = kana_to_kanji(kana)
+        !!kanji ? "#{kanji}さん (#{kana}さん)" : nil
       end
     end
   end
