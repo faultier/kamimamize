@@ -1,0 +1,17 @@
+# kamimamize
+
+## Description
+
+八九寺が名前を噛みまみたしてくれます。
+
+## Usaeg
+
+    require 'kamimamize'
+    
+    mayoi = Kamimamize::Coverter.new({
+        :pattern => { :priority => 10 },
+        :repeat  => { :priority => 5, :through => 0.4 },
+        :swap    => { :through => 0.05, :appid => 'APPID' }
+    })
+
+    puts mayoi.kamimamize('阿良々木', 'あららぎ')
